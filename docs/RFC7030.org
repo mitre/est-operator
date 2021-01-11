@@ -1,0 +1,110 @@
+#+TITLE: RFC 7030 implementation
+* Purpose
+This document tracks implementation of RFC 7030 requirements.
+* RFC client requirements
+Only sections with client requirements are referenced.sections.
+** 3.2.1 HTTP Headers for Control
+*** Implemented
+- HTTP redirection (3xx) provided by the [[https://requests.readthedocs.io/en/master/][requests package]].
+- POST or HEAD redirection user approval.
+  + ~est-operator~ uses Explicit TA Database only.  If the client is redirected to a site that is not in the Explicit TA Database, the request will fail with a TLS certificate verification error.
+** 3.2.2 HTTP URIs for Control
+*** Implemented
+- URI path prefix "=/.well-known/est=" is used for all issuers.
+- Both =estissuers= and =estclusterissuers= have a the attribute =label= which provides the optional additional path segments.  =label= defaults to the empty string.
+- =/cacerts= is fully implemented.
+- =/simpleenroll= is implemented with HTTP Basic Authentication only.
+- =/simplereenroll= is implemented with HTTP Basic Authentication only.
+*** Not Implemented
+- =/fullcmc= 
+- =/serverkeygen= 
+- =/csrattrs= 
+** 3.2.3 HTTP-Based Client Authentication
+*** Implemented
+- HTTP Basic Authentication
+  + TLS client authentication is /PLANNED/ so HTTP authentication after TLS authentication is /PLANNED/.
+- HTTPS is used for all connections to the EST server.  
+- The SSL context excludes null and anonymous cipher suites.
+- The SSL context is explicitly set to TLSv1.2 or later.
+*** Planned
+- HTTP Digest Authentication 
+** 3.2.4 Message Types
+*** Implemented
+- =application/pkcs10= and =application/pkcs7-mime= 
+- =/cacerts=, =/simpleenroll=, and =/simplereenroll= 
+*** Not Implemented
+- =/fullcmc=, =/serverkeygen=, and =/csrattrs=
+** 3.3.1 TLS-Based Server Authentication
+*** Implemented
+- HTTPS is used for all EST methods.
+- Server certificate validation is required in all sessions.
+- Explicit TA Database
+  + =cacert= attribute of issuers holds the Explicit TAs and is used as the sole trust source for all TLS requests.
+- Bootstrapping trust is /PARTIALLY IMPLEMENTED/.
+  + =cacert= attribute is required.  The controller reconciles issuers by calling =/cacerts= and verifying that the configured certificate is in the list returned by the EST server.
+*** Planned
+- Authentication with the issued certitificate for renew or rekey.
+*** Not Implemented
+- Implicit TA Database
+  + ~requests~ uses ~certifi~ provided trust anchors for all sessions and functions as the Implicit TA Database.  The SSLContext can merge ~certifi~ trust anchors with a string-based trust anchor via the ~cadata~ parameter, but there is no way to /disable/ ~certifi~ trust anchors without using ~cafile~ or ~cadir~.  Further, using the Implicit TA Database introduces security concerns for redirects, as well as requiring extra logic for authorizing the EST server.  It's simpler to disable the Implicit TA Database entirely.  This has the side effect of removing the need to self-bootstrap; explicit trust is configured at deployment.
+** 3.3.2 TLS-Based Client Authentication
+*** Implemented
+- Existing certificate used for renew/rekey authentication.
+*** Planned
+- Client certificate authentication for initial enrollment.
+- Fallback to HTTP authentication if certificate fails on renew/rekey.
+** 3.3.3 Certificate-less TLS Mutual Authentication
+/NOT IMPLEMENTED/.  No EST server implementation with SRP cipher suite support is available.
+** 3.4 Proof-of-Possession
+*** Implemented
+- ~cert-manager~ provides a signed PKCS#10 request.
+** 3.5 Linking Identity and POP Information
+/NOT IMPLEMENTED/.
+- ~cert-manager~ provides CSRs and cannot be aware of TLS session data without modification.
+** 3.6.1 Client Use of Explicit TA Database
+*** Implemented
+- The ~requests~ module handles redirections with the configured context
+- Issuers check the =/cacerts= response against the configured value, if the values are different, the issuer is removed from service.
+** 3.6.2 Client Use of Implicit TA Database
+/NOT IMPLEMENTED/.
+- ~requests~ uses ~certifi~ provided trust anchors for all sessions and can function as the Implicit TA Database.  The SSLContext can merge ~certifi~ trust anchors with the Explicit TA Database (implemented as a string-based trust anchor) via the ~cadata~ parameter.  However, there is no way to /disable/ ~certifi~ trust anchors without using ~cafile~ or ~cadir~.  Further, using the Implicit TA Database introduces security concerns for redirects, as well as requiring extra logic for authorizing the EST server.  It's simpler to disable the Implicit TA Database entirely.  This has the side effect of removing the need to self-bootstrap; explicit trust is configured at deployment.
+** 4.1 Distribution of CA Certificates
+IMPLEMENTED.
+** 4.2.1 Simple Enrollment of Clients
+*** Implemented
+- Proof of possession is limited to CSR signature only.
+- Authentication is limited to HTTP Basic Authentication.
+** 4.2.2 Simple Re-enrollment of Clients
+*** Implemented
+- Proof of possession is limited to CSR signature only.
+- Authentication is limited to HTTP Basic Authentication.
+- Authentication with previously-issued certificate.
+** 4.2.3 Simple Enroll and Re-enroll Response
+IMPLEMENTED.
+** 4.3 Full CMC
+/NOT IMPLEMENTED/.
+** 4.4 Server-Side Key Generation
+/NOT IMPLEMENTED/.
+** 4.5 CSR Attributes
+/NOT IMPLEMENTED/.
+** 6 Security Considerations
+*** Implemented
+- Single use credentials
+  + It is the server's responsibility to invalidate credentials after use or a set time.  HTTP 401 Unauthorized responses are treated as a /temporary failure/ with a retry after 10 minutes.  The issuer credential is read for each attempt, so the next reconcile attempt after updating the issuer's credential should succeed.
+- Protection against Basic Authentication leakage.
+  + Implicit trust is not implemented, so Basic Auth credentials are only passed to authorized servers.
+- Exclude EXPORT, DES, and low-key length cipher suites.
+  + ~est-operator~ explicitly requires TLSv1.2 or later which excludes these cipher suites.
+- ASN.1 TLV overrun risks
+  + Underlying cryprographic library ASN.1 parser has no related CVEs.
+*** Planned
+- Protection against Basic Authentication leakage.  
+  + TLS authentication is /PLANNED/.
+  + Digest authentication is /PLANNED/.
+*** Not Applicable
+- Certificate-less TLS cipher suites.
+  + TLS SRP is not implemented.
+- Server-side key generation requirements.
+  + Server-side key is not implemented and not planned.
+- CSR attrbute request MitM risks.
+  + CSR attribute query is not implemented.

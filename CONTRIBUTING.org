@@ -1,0 +1,7 @@
+#+TITLE: Contributing
+* Managing Python requirements
+This repository uses [[https://github.com/jazzband/pip-tools][=pip-tools=]] to manage package requirements.  Modifications to packages should be made to [[./requirements.in][=requirements.in=]] and [[./dev-requirements.in][=dev-requirements.in=]].  Thes files ues =pip= syntax.  The ".txt" files are regenerated with the following command.
+#+BEGIN_SRC shell :results silent
+pip-compile --generate-hashes requirements.in
+pip-compile --generate-hashes dev-requirements.in
+#+END_SRC
