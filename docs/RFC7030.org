@@ -42,8 +42,6 @@ Only sections with client requirements are referenced.sections.
   + =cacert= attribute of issuers holds the Explicit TAs and is used as the sole trust source for all TLS requests.
 - Bootstrapping trust is /PARTIALLY IMPLEMENTED/.
   + =cacert= attribute is required.  The controller reconciles issuers by calling =/cacerts= and verifying that the configured certificate is in the list returned by the EST server.
-*** Planned
-- Authentication with the issued certitificate for renew or rekey.
 *** Not Implemented
 - Implicit TA Database
   + ~requests~ uses ~certifi~ provided trust anchors for all sessions and functions as the Implicit TA Database.  The SSLContext can merge ~certifi~ trust anchors with a string-based trust anchor via the ~cadata~ parameter, but there is no way to /disable/ ~certifi~ trust anchors without using ~cafile~ or ~cadir~.  Further, using the Implicit TA Database introduces security concerns for redirects, as well as requiring extra logic for authorizing the EST server.  It's simpler to disable the Implicit TA Database entirely.  This has the side effect of removing the need to self-bootstrap; explicit trust is configured at deployment.
