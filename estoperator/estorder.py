@@ -90,13 +90,12 @@ def estorder_create(spec, patch, body, **_):
     )
     if spec["renewal"]:
         certfile.close()
-    if response.status_code in [400]:
-        kopf.error(body, reason="RequestFailed", message=response.reason)
-        patch.metadata.annotations["estoperator-perm-fail"] = "yes"
-        # TODO update owner.status.conditions (Ready:False, Reason:Failed)
-        raise kopf.PermanentError(f"{response.status_code}: {response.reason}")
-    if 401 <= response.status_code < 500:
-        kopf.warn(body, reason="RequestProblem", message=response.reason)
+    if 400 <= response.status_code < 500:
+        kopf.exception(
+            body,
+            reason="RequestProblem",
+            message=f"{response.reason}: {response.content}",
+        )
         raise kopf.TemporaryError(
             f"{response.status_code}: {response.reason}", delay=600
         )
