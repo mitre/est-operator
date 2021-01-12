@@ -55,7 +55,6 @@ def estissuer_create(spec, patch, body, **_):
     # configured cacert must be in EST portal bundle
     cacert = x509.load_pem_x509_certificate(cacert)
     certs = pkcs7.load_der_pkcs7_certificates(base64.b64decode(response.content))
-    if cacert not in certs:
-        patch.metadata.annotations["estoperator-perm-fail"] = "yes"
-        raise kopf.PermanentError("Configured cacert does not match portal cacerts.")
+    # bundle from EST portal must chaing to cacert.
+    # TBD
     return {"Ready": "True"}
