@@ -5,6 +5,8 @@
 ~est-operator~ is written in Python using the [[https://kopf.readthedocs.io/en/stable/][kopf framework]].
 
 This operator covers only a portion of RFC 7030; see [[docs/RFC7030.org][this document]] for an overview of what's implemented, planned, and not planned.
+
+See [[docs/DESIGN.org][this document]] for an overview of this operator's design.
 * Getting Started
 ** Prerequisites
 - Kubernetes v1.19.1 or later.  ~est-operator~ should run on v1.16 or later, but is only tested with v1.19.1.
