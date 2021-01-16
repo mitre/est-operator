@@ -145,7 +145,7 @@ def estorder_create(spec, patch, body, **_):
                 certreq,
             )
         except k8s.exceptions.OpenApiException as err:
-            raise kopf.TemporaryError(eval(err.body)["message"])
+            raise kopf.TemporaryError(eval(err.body)["message"]) from err
 
     return {
         "certificate": base64.b64encode(cert).decode(),

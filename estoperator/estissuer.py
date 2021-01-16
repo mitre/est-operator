@@ -48,7 +48,7 @@ def estissuer_create(spec, patch, body, **_):
             requests.exceptions.RequestException,
         ) as err:
             patch.metadata.annotations["estoperator-perm-fail"] = "yes"
-            raise kopf.PermanentError(err)
+            raise kopf.PermanentError(err) from err
     # 200 OK is good, anything else is an error
     if response.status_code != 200:
         raise kopf.TemporaryError(
@@ -69,5 +69,5 @@ def estissuer_create(spec, patch, body, **_):
             )
             context.verify_certificate()
     except X509StoreContextError as err:
-        kopf.PermanentError(f"Unable to verify /cacerts content: {err}")
+        raise kopf.PermanentError(f"Unable to verify /cacerts content: {err}") from err
     return {"Ready": "True"}

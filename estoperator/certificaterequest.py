@@ -49,7 +49,7 @@ def estissuer_certrequest_handler(namespace, spec, meta, body, patch, **_):
             body=resource,
         )
     except k8s.exceptions.OpenApiException as err:
-        kopf.TemporaryError(eval(err.body)["message"])
+        raise kopf.TemporaryError(eval(err.body)["message"])
     # log event
     message = f"Created new EstOrder {resource['metadata']['name']}"
     kopf.info(
