@@ -33,7 +33,9 @@ def estorder_create(spec, patch, body, **_):
     cacert = base64.b64decode(issuer["spec"]["cacert"])
     request = base64.b64decode(spec["request"])
     baseUrl = f"https://{issuer['spec']['host']}:{issuer['spec'].get('port', 443)}"
-    path = "/".join(i for i in [WELLKNOWN, issuer["spec"].get("label")] if i)
+    path = "/".join(
+        i for i in [WELLKNOWN, issuer["spec"].get("label")] if i is not None
+    )
     kwargs = {}
     if spec["renewal"]:
         path = path + "/simplereenroll"

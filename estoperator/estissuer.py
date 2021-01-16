@@ -33,7 +33,9 @@ def estissuer_create(spec, patch, body, **_):
     if secret is None:
         raise kopf.TemporaryError(f"{spec['secretName']} not found")
     baseUrl = f"https://{spec['host']}:{spec.get('port', 443)}"
-    path = "/".join(i for i in [WELLKNOWN, spec.get("label"), "cacerts"])
+    path = "/".join(
+        i for i in [WELLKNOWN, spec.get("label"), "cacerts"] if i is not None
+    )
     # fetch /cacerts using explicit TA
     cacert = base64.b64decode(spec["cacert"])
     with tempfile.NamedTemporaryFile(suffix=".pem") as cafile:
