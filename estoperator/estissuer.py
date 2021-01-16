@@ -59,7 +59,6 @@ def estissuer_create(spec, patch, body, **_):
     store = X509Store()
     for cert in explicit:
         store.add_cert(load_certificate(FILETYPE_PEM, cert.as_text()))
-    # cacert = x509.load_pem_x509_certificate(cacert)
     try:
         for leaf in pkcs7.load_der_pkcs7_certificates(
             base64.b64decode(response.content)
