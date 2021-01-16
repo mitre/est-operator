@@ -25,8 +25,6 @@ def estissuer_certrequest_handler(namespace, spec, meta, body, patch, **_):
     cert = get_owner_by_kind(body, ["Certificate"])
     cert_secret = get_secret_from_resource(cert)
     # Create an EstOrder for it in request namespace
-    if cert_secret and (cert_secret.type == "kubernetes.io/tls"):
-        pass
     renewal = (
         False if cert_secret is None else (cert_secret.type == "kubernetes.io/tls")
     )
