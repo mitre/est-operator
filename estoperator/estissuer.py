@@ -57,10 +57,8 @@ def estissuer_create(spec, patch, body, **_):
     # configured cacert must be in EST portal bundle
     explicit = pem.parse(cacert)
     store = X509Store()
-    _ = [
+    for cert in explicit:
         store.add_cert(load_certificate(FILETYPE_PEM, cert.as_text()))
-        for cert in explicit
-    ]
     # cacert = x509.load_pem_x509_certificate(cacert)
     try:
         for leaf in pkcs7.load_der_pkcs7_certificates(
