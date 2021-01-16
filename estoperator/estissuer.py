@@ -3,10 +3,12 @@
 import base64
 import tempfile
 
-import cryptography.x509 as x509
 import kopf
+import pem
 import requests
-from cryptography.hazmat.primitives.serialization import pkcs7
+from cryptography.hazmat.primitives.serialization import Encoding, pkcs7
+from OpenSSL.crypto import (FILETYPE_PEM, X509Store, X509StoreContext,
+                            X509StoreContextError, load_certificate)
 
 from estoperator.helpers import (GROUP, VERSION, WELLKNOWN, SSLContextAdapter,
                                  get_secret_from_resource)
@@ -53,8 +55,22 @@ def estissuer_create(spec, patch, body, **_):
             f"Unexpected response: {response.status}, {response.reason}",
         )
     # configured cacert must be in EST portal bundle
-    cacert = x509.load_pem_x509_certificate(cacert)
-    certs = pkcs7.load_der_pkcs7_certificates(base64.b64decode(response.content))
-    # bundle from EST portal must chaing to cacert.
-    # TBD
+    explicit = pem.parse(cacert)
+    store = X509Store()
+    _ = [
+        store.add_cert(load_certificate(FILETYPE_PEM, cert.as_text()))
+        for cert in explicit
+    ]
+    # cacert = x509.load_pem_x509_certificate(cacert)
+    try:
+        for leaf in pkcs7.load_der_pkcs7_certificates(
+            base64.b64decode(response.content)
+        ):
+            context = X509StoreContext(
+                store,
+                load_certificate(FILETYPE_PEM, leaf.public_bytes(Encoding.PEM)),
+            )
+            context.verify_certificate()
+    except X509StoreContextError as err:
+        kopf.PermanentError(f"Unable to verify /cacerts content: {err}")
     return {"Ready": "True"}
