@@ -1,19 +1,27 @@
-FROM python:3.7 as builder
+# Phase 1: Baseline image
+FROM amazonlinux:2.0.20201218.1 as base
+
+# FIPS dependencies
+RUN yum install -y dracut-fips openssl python3 && \
+    yum clean all && \
+    rm -rf /var/cache/yum
+
+# Phase 2: build dependencies for FIPS mode
+FROM base as builder
+
+RUN yum install -y openssl-devel python3-devel gcc libffi-devel
 
 WORKDIR /app
-ADD requirements.txt /app
-RUN mkdir /app/lib && pip install -r requirements.txt -t /app/lib/
+ADD fips-requirements.txt /app
+RUN mkdir /app/lib && pip3 install -r fips-requirements.txt -t /app/lib/
 
-FROM amazonlinux:2.0.20201218.1
+# Phase 3: build deployment image
+FROM base
 
 ENV OPENSSL_FIPS=1
 ENV PYTHONPATH=/usr/local/lib/python3.7/site-packages:/app
 
 WORKDIR /app
-
-RUN yum install -y dracut-fips openssl python3 && \
-    yum clean all && \
-    rm -rf /var/cache/yum
 
 COPY --from=builder /app/lib/ /usr/local/lib/python3.7/site-packages
 COPY . /app
