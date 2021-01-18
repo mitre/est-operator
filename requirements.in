@@ -6,3 +6,4 @@ urllib3[secure]
 requests
 python-dateutil
 pem
+pylddwrap

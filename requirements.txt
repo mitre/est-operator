@@ -6,6 +6,7 @@
 #
 aiohttp==3.7.3            # via kopf
 aiojobs==0.3.0            # via kopf
+asttokens==2.0.4          # via icontract
 async-timeout==3.0.1      # via aiohttp
 attrs==20.3.0             # via aiohttp
 cachetools==4.2.0         # via google-auth
@@ -15,6 +16,7 @@ chardet==3.0.4            # via aiohttp, requests
 click==7.1.2              # via kopf
 cryptography==3.3.1       # via -r requirements.in, pyopenssl, urllib3
 google-auth==1.24.0       # via kubernetes
+icontract==2.4.1          # via pylddwrap
 idna==2.10                # via requests, urllib3, yarl
 iso8601==0.1.13           # via kopf
 kopf==0.28.3              # via -r requirements.in
@@ -26,6 +28,7 @@ pyasn1-modules==0.2.8     # via google-auth
 pyasn1==0.4.8             # via pyasn1-modules, rsa
 pycparser==2.20           # via cffi
 pykube-ng==20.10.0        # via kopf
+pylddwrap==1.1.0          # via -r requirements.in
 pyopenssl==20.0.1         # via urllib3
 python-dateutil==2.8.1    # via -r requirements.in, kubernetes
 python-json-logger==2.0.1  # via kopf
@@ -33,8 +36,8 @@ pyyaml==5.3.1             # via -r requirements.in, kubernetes, pykube-ng
 requests-oauthlib==1.3.0  # via kubernetes
 requests==2.25.1          # via -r requirements.in, kubernetes, pykube-ng, requests-oauthlib
 rsa==4.6                  # via google-auth
-six==1.15.0               # via cryptography, google-auth, kubernetes, pyopenssl, python-dateutil, websocket-client
-typing-extensions==3.7.4.3  # via aiohttp, kopf
+six==1.15.0               # via asttokens, cryptography, google-auth, kubernetes, pyopenssl, python-dateutil, websocket-client
+typing-extensions==3.7.4.3  # via aiohttp, kopf, pylddwrap
 urllib3[secure]==1.26.2   # via -r requirements.in, kubernetes, requests
 websocket-client==0.57.0  # via kubernetes
 yarl==1.6.3               # via aiohttp
