@@ -1,3 +1,4 @@
 # for non-FIPS versions
 cryptography
+pyopenssl
 -r base-requirements.txt
