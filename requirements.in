@@ -1,8 +1,4 @@
-kopf
+# for non-FIPS versions
 cryptography
-kubernetes
-pyyaml
-urllib3[secure]
-requests
-python-dateutil
-pem
+pyopenssl
+-r base-requirements.txt

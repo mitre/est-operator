@@ -10,7 +10,7 @@ See [[docs/DESIGN.org][this document]] for an overview of this operator's design
 * Getting Started
 ** Prerequisites
 - Kubernetes v1.19.1 or later.  ~est-operator~ should run on v1.16 or later, but is only tested with v1.19.1.
-- Python 3.9 and packages.  [[./requirements.txt][requirements.txt]] has all Python package dependencies.  Install prerequistest with =pip=.
+- Python 3.9 and packages.  [[./requirements.txt][requirements.txt]] has all Python package dependencies.  Install prerequistest with =pip=. 
   #+BEGIN_SRC shell :results silent
 pip install -r requirements.txt
   #+END_SRC
@@ -18,11 +18,12 @@ pip install -r requirements.txt
   #+BEGIN_SRC shell :result silent
 pip install -r requirements.txt -r dev-requirements.txt
   #+END_SRC
+See FIPS section below for installing dependencies in that mode.
+  
   This repository uses [[https://github.com/jazzband/pip-tools][pip-tools]] to build requirements files.
 ** Building
-TBD.
 ** Installing
-See [[*Deployment]], below.  Also see [[docs/DESIGN.org][the design document]] for a deployment description.
+See [[*Deployment]], below.  Also see [[docs/DESIGN.org][the design document]] for a deployment description. 
 * Testing
 ** Style
 ** Component
@@ -39,6 +40,34 @@ kopf run est-operator.py
 #+END_SRC
 
 See [[https://kopf.readthedocs.io/en/stable/][kopf documentation]] for more details of running in this mode.
+* Federal Information Processing Standards (FIPS) 140-2 certified mode
+The operator can be built to satisfy FIPS 140-2 certification requirements.  FIPS 140-2 certification depends on the module and the platform.  A platform with Python dynamically linked to OpenSSL /and/ links OpenSSL to a validated version of the OpenSSL FIPS Object Module can demonstrate FIPS 140-2 certification.  Consult the [[https://csrc.nist.gov/projects/cryptographic-module-validation-program/validated-modules/search?SearchMode=Basic&ModuleName=OpenSSL&CertificateStatus=Active&ValidationYear=0][NIST Cryptographic Module Validation Program list of OpenSSL modules]] for combinations of OpenSSL and platform that are certified.
+
+*Note*: OpenSSL 1.0.2 is no longer supported by the OpenSSL project, but OpenSSL FIPS Object Module 2.0 is not compatible with OpenSSL 1.1.  A new version is [[https://www.openssl.org/blog/blog/2018/09/25/fips/][not available nor certified yet.]]
+
+Other FIPS certified modules are available (e.g., GnuTLS and Network Security Services) but the work to integrate these modules is extensive.  We welcome merge requests on this topic.
+
+** Building a FIPS version
+Requirements for FIPS mode vary slightly from above.  The ~cryptography~ package embeds a statically linked version of OpenSSL and is not compatible with OpenSSL 1.0.2, which is the latest FIPS certified version.
+
+Install requirements with the following ~pip~ command.  You will need OpenSSL headers, Python3 headers, CFFI headers, and GCC.  See [[https://cryptography.io/en/latest/installation.html#][cryptography build instructions]] for details.
+
+#+BEGIN_SRC bash :results silent
+pip install -r fips-requirements.txt
+#+END_SRC
+
+** Building a FIPS container image
+*Note*: This container image demonstrates FIPS 140-2 certification /only on Amazon Linux 2 running on AWS EC2/.
+
+[[Dockerfile.fips][Dockerfile.fips]] builds a version of the operator image that maintains [[https://csrc.nist.gov/publications/detail/fips/140/2/final][FIPS 140-2]] certification.  The image is built on Amazon Linux 2 and has [[https://aws.amazon.com/blogs/publicsector/enabling-fips-mode-amazon-linux-2/][FIPS validated libraries installed according to AWS documentation.]]  The image runs with the environment variable ~OPENSSL_FIPS=1~ set, and startup code in [[estoperator/__init__.py][module initialization]] enables FIPS mode in the cryptographic library.
+
+#+BEGIN_SRC bash :results silent :exports code
+docker build -t est-operator:fips -f Dockerfile.fips .
+#+END_SRC
+
+** Running a FIPS version out of cluster 
+If you have a FIPS certified version of OpenSSL installed and installed dependencies as above, the operator can be run "out of cluster" by ~OPENSSL_FIPS=1~ in the shell environment before running ~kopf~.  Otherwise we recommend using the container image.
+
 * Built with
 - Python 3.9
 - [[https://github.com/nolar/kopf][kopf framework]]
