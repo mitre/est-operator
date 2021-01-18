@@ -1,0 +1,4 @@
+# for FIPS versions, cryptography has to be linked to the FIPS OpenSSL version
+cryptography==3.1.1
+--no-binary=cryptography
+-r base-requirements.txt

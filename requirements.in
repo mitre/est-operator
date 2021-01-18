@@ -1,9 +1,3 @@
-kopf
+# for non-FIPS versions
 cryptography
-kubernetes
-pyyaml
-urllib3
-requests
-python-dateutil
-pem
-pylddwrap
+-r base-requirements.txt
