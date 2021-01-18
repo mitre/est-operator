@@ -20,9 +20,8 @@ pip install -r requirements.txt -r dev-requirements.txt
   #+END_SRC
   This repository uses [[https://github.com/jazzband/pip-tools][pip-tools]] to build requirements files.
 ** Building
-TBD.
 ** Installing
-See [[*Deployment]], below.  Also see [[docs/DESIGN.org][the design document]] for a deployment description.
+See [[*Deployment]], below.  Also see [[docs/DESIGN.org][the design document]] for a deployment description. 
 * Testing
 ** Style
 ** Component
@@ -39,6 +38,17 @@ kopf run est-operator.py
 #+END_SRC
 
 See [[https://kopf.readthedocs.io/en/stable/][kopf documentation]] for more details of running in this mode.
+* Federal Information Processing Standards (FIPS) 140-2 certified mode
+The operator can be run "out of cluster" in FIPS mode by setting ~OPENSSL_FIPS=1~ in the shell environment before running ~kopf~.  This will require Python compiled with OpenSSL with the FIPS validated engine installed.
+
+[[Dockerfile.fips][Dockerfile.fips]] builds a version of the operator image that maintains [[https://csrc.nist.gov/publications/detail/fips/140/2/final][FIPS 140-2]] certification.  The image is built on Amazon Linux 2 and has [[https://aws.amazon.com/blogs/publicsector/enabling-fips-mode-amazon-linux-2/][FIPS validated libraries installed according to AWS documentation.]]  The image runs with the environment variable ~OPENSSL_FIPS=1~ set, and startup code in [[estoperator/__init__.py][module initialization]] enables FIPS mode in the cryptographic library.
+
+#+BEGIN_SRC bash :results silent :exports code
+docker build -t est-operator:fips -f Dockerfile.fips .
+#+END_SRC
+
+FIPS 140-2 certification is only valid on AWS EC2 instances running Amazon Linux 2.  However, any platform with Python dynamically linked to OpenSSL /and/ has a validated module installed can also demonstrate certification.  Consult the [[https://csrc.nist.gov/projects/cryptographic-module-validation-program/validated-modules/search?SearchMode=Basic&ModuleName=OpenSSL&CertificateStatus=Active&ValidationYear=0][NIST Cryptographic Module Validation Program list of OpenSSL modules]] for combinations of OpenSSL and platform that are certified.
+
 * Built with
 - Python 3.9
 - [[https://github.com/nolar/kopf][kopf framework]]
