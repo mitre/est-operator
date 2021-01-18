@@ -18,6 +18,9 @@ def setup_fips(**kwargs):
         raise ssl.SSLError("FIPS mode failed to initialize")
 
 
+# Must do this before importing `cryptography` is imported because it brings in
+# hashlib, and that leads to mode weirdness. Note that hashlib.md5() will still
+# work, but it uses a pure python implementation rather than OpenSSL's.
 if os.getenv("OPENSSL_FIPS") == "1":
     setup_fips()
 
