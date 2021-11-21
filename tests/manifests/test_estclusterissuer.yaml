@@ -1,0 +1,34 @@
+---
+apiVersion: est.mitre.org/v1alpha1
+kind: EstClusterIssuer
+metadata:
+  name: testrfc7030-cluster
+spec:
+  host: testrfc7030.com
+  port: 8443
+  cacert: |-
+    -----BEGIN CERTIFICATE-----
+    MIIBUjCB+qADAgECAgkAsOsMO552gHQwCgYIKoZIzj0EAwIwFzEVMBMGA1UEAxMM
+    ZXN0RXhhbXBsZUNBMB4XDTE5MDgwOTIwMjUzOFoXDTI5MDgwNjIwMjUzOFowFzEV
+    MBMGA1UEAxMMZXN0RXhhbXBsZUNBMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE
+    e/4TlZtkyUP7v6F8GHdJLzjQvwahFDBj0L/oPfxf00oDHya5wsU2wT0cV7L70hPD
+    1n4dxhG/1JYX2UK10zflqKMvMC0wDAYDVR0TBAUwAwEB/zAdBgNVHQ4EFgQU2f8O
+    cSG4J8B3LPU203cyUF2DQCEwCgYIKoZIzj0EAwIDRwAwRAIgTgMXKl86lcQr3mTo
+    2uXbSZt8had163ft+9LBCqoxHiICIAfzhrTBBKSUxZQDeGIahr4OLQlS7GeSNGK1
+    ey5tEG+Z
+    -----END CERTIFICATE-----
+  secretRef:
+    name: testrfc7030-cred
+
+---
+# Secret is in cert-manager namespace, the operator's default namespace.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: testrfc7030-cred
+  namespace: cert-manager
+type: kubernetes.io/basic-auth
+stringData:
+  # Published on the website, so not really secret
+  username: estuser
+  password: estpwd
