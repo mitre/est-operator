@@ -88,9 +88,7 @@ def create_order(
         reason="Pending",
         message=f"EstOrder {name} created",
     )
-    print(status.get("conditions"))
     conditions = update_conditions(status.get("conditions", []), condition)
-    print(conditions)
     patch.status["conditions"] = conditions
 
 
