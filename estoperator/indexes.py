@@ -14,7 +14,7 @@ def anchor_idx(namespace, name, spec, **_):
 
 @kopf.index("estissuers")
 @kopf.index("estclusterissuers", param="cert-manager")
-def issuers_idx(namespace, name, spec, param, **_):
+def creds_idx(namespace, name, spec, param, **_):
     """Index of issuer credentials.
 
     This index caches actual secrets. param provides the default namespace for
@@ -33,14 +33,14 @@ def issuers_idx(namespace, name, spec, param, **_):
 
 @kopf.index("estorders")
 def orders_owner_idx(namespace, name, meta, **_):
-    """Index of estorders by owner."""
+    """Index of estorders by owning certificaterequest."""
     owner = meta.get("ownerReferences")[0]
     return {(namespace, owner.get("name")): (namespace, name)}
 
 
 @kopf.index("estorders")
 def orders_certs_idx(namespace, name, status, field="status.certificate", **_):
-    """Index of estorder certificates by order."""
+    """Index of completed certificates by order."""
     return {(namespace, name): status.get("certificate")}
 
 
@@ -56,9 +56,19 @@ def approved_idx(namespace, name, status, **_):
     return {(namespace, name): True}
 
 
-@kopf.index("certificates", field="status.renewalTime")
+def is_est(spec, **_):
+    """Return true when spec.issuerRef.kind is EstIssuer or EstClusterIssuer."""
+    issuer = spec["issuerRef"]
+    return bool(issuer["group"] == "est.mitre.org")
+
+
+@kopf.index("certificates", field="status.renewalTime", when=is_est)
 def renewal_idx(namespace, name, spec, **_):
-    """Index of certificate renewal secrets."""
+    """Index of certificate renewal secrets.
+
+    This index caches actual secrets.
+
+    """
     issuer = spec["issuerRef"]
     secret_name = spec["secretName"]
     api = client.CoreV1Api()
@@ -67,3 +77,10 @@ def renewal_idx(namespace, name, spec, **_):
     except client.OpenApiException as err:
         raise kopf.TemporaryError(err) from err
     return {(namespace, name): secret.data}
+
+
+@kopf.index("certificaterequests")
+def requests_owners_idx(namespace, name, meta, **_):
+    """Index of certificaterequests by owning certificate."""
+    owner = meta.get("ownerReferences")[0]
+    return {(namespace, owner["name"]): (namespace, name)}

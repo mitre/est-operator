@@ -13,7 +13,7 @@ def request_ready(namespace, name, spec, approved_idx, anchor_idx, **_):
     approved = approved_idx.get((namespace, name))
     # issuer must be ours
     issuer = spec["issuerRef"]
-    ours = issuer["kind"] in ["EstIssuer", "EstClusterIssuer"]
+    ours = issuer["group"] == "est.mitre.org"
     # issuer must exist (in same namespace if EstIssuer)
     space = namespace if issuer["kind"] == "EstIssuer" else None
     exists = anchor_idx.get((space, issuer["name"]))
@@ -55,7 +55,7 @@ def ca(namespace, body, spec, anchor_idx: kopf.Index, **_):
 
 @kopf.on.create("certificaterequests", when=request_ready)
 def create_order(
-    namespace, name, body, spec, status, patch, approved_idx, anchor_idx, **_
+    namespace, name, body, spec, status, patch, requests_owners_idx, renewal_idx, **_
 ):
     """Create EstOrder from CertificateRequest if approved."""
     request = spec["request"]
@@ -69,6 +69,11 @@ def create_order(
         },
     }
     kopf.adopt(resource)
+    owner = requests_owners_idx.get((namespace, name))
+    if renewal_idx.get(owner):
+        kopf.label(resource, {"est.mitre.org/mode": "renewal"})
+    else:
+        kopf.label(resource, {"est.mitre.org/mode": "initial"})
     api = client.CustomObjectsApi()
     try:
         _ = api.create_namespaced_custom_object(
