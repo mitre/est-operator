@@ -2,7 +2,7 @@
 
 import pytest
 
-from estoperator import request_ready, cert_ready
+from estoperator import request_ready, cert_ready, update_conditions
 
 cases = [
     # approved & aligned ns
@@ -81,3 +81,99 @@ def test_cert_ready(case, expected, with_orders_owner_idx, with_orders_certs_idx
     namespace, name = case
     result = cert_ready(namespace, name, with_orders_owner_idx, with_orders_certs_idx)
     assert result == expected
+
+
+@pytest.fixture
+def with_requests(with_api, with_controller, with_cases):
+    """Provide CertificateRequests."""
+    result = with_api.list_namespaced_custom_object(
+        "cert-manager.io", "v1", "default", "certificaterequests"
+    )
+    return result["items"]
+
+
+@pytest.fixture
+def with_orders(with_api, with_controller, with_cases):
+    """Provide EstOrders."""
+    result = with_api.list_namespaced_custom_object(
+        "est.mitre.org", "v1alpha1", "default", "estorders"
+    )
+    return result["items"]
+
+
+@pytest.mark.parametrize("index", [0, 1])
+def test_ca(index, with_requests):
+    """Test that status.ca gets set."""
+    assert with_requests[index].get("status", {}).get("ca")
+
+
+def test_order_creation(with_orders):
+    """EstOrders are created."""
+    assert len(with_orders) == 2
+
+
+@pytest.mark.parametrize("index", [0, 1])
+def test_cr_order_status(index, with_requests, with_orders, with_controller):
+    """CertificateRequest status.conditions updated with Pending when order is created."""
+    conditions = with_requests[index]["status"].get("conditions")
+    print(conditions)
+    pending = [item["reason"] for item in conditions if item["type"] == "Ready"]
+    assert len(pending) == 1
+    assert "Pending" in pending
+
+
+class TestUpdateConditions:
+    """Tests for update_conditions()."""
+
+    @pytest.fixture(scope="class")
+    def with_conditions(self):
+        """Provide conditions list."""
+        return [
+            {
+                "type": "Ready",
+                "status": "Unknown",
+                "reason": "",
+                "lastTransitionTime": "dummy",
+            }
+        ]
+
+    @pytest.fixture(scope="class")
+    def new_cond(self):
+        """Provide new condition."""
+        return {
+            "type": "Approved",
+            "status": "False",
+            "reason": "",
+            "lastTransitionTime": "flag",
+        }
+
+    @pytest.fixture(
+        scope="class",
+        params=[
+            ({"status": "True"}, True),
+            ({"reason": "Pending"}, True),
+            ({"lastTransitionTime": "flag"}, False),
+        ],
+    )
+    def replace_cond(self, request):
+        """Provide replacement condition."""
+        base = {
+            "type": "Ready",
+            "status": "Unknown",
+            "reason": "",
+            "lastTransitionTime": "dummy",
+        }
+        return {**base, **request.param[0]}, request.param[1]
+
+    def test_update_conditions_new(self, with_conditions, new_cond):
+        """Add new condition."""
+        result = update_conditions(with_conditions, new_cond)
+        assert len(result) == 2
+        assert new_cond in result
+
+    def test_update_conditions(self, with_conditions, replace_cond):
+        """Replace condition."""
+        cond, expected = replace_cond
+        result = update_conditions(with_conditions, cond)
+        assert len(result) == 1
+        assert (cond in result) == expected
