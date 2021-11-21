@@ -1,6 +1,7 @@
----
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-bases:
-  - bases/
+resources:
+  - est.mitre.org_estclusterissuers.yaml
+  - est.mitre.org_estissuers.yaml
+  - est.mitre.org_estorders.yaml
