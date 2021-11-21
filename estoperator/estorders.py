@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
-"""Handlers for EstOrders."""
+"""Handlers for estorders."""
 
 import kopf
-
-
-@kopf.on.create("estorders", field="status.certificate", value=kopf.ABSENT)
-def certificate(**_):
-    """Update status with certificate."""
 
 
 @kopf.on.create("estorders", labels={"est.mitre.org/mode": "initial"})
