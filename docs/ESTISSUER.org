@@ -1,5 +1,5 @@
-#+TITLE: EstIssuer
-
+#+TITLE: EstIssuer Example
+This example uses a public portal that signs any requests under a self-signed certificate.
 #+begin_src yaml
 ---
 apiVersion: est.mitre.org/v1alpha1

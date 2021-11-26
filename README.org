@@ -1,45 +1,58 @@
 #+TITLE: Certificate Manager Enrollment Over Secure Transport
 * About
-~est-operator~ is a [[https://cert-manager.io/][cert-manager]] [[https://cert-manager.io/docs/configuration/external/][External certificate issuer]] that implements a subset of [[https://tools.ietf.org/html/rfc7030][RFC 7030 Enrollment over Secure Transport]] (EST).  It provides custom resources for EST services and a custom controller that reconciles certificate requests.
+~estoperator~ is a [[https://cert-manager.io/][cert-manager]] [[https://cert-manager.io/docs/configuration/external/]["External" certificate issuer]] that implements a subset of [[https://tools.ietf.org/html/rfc7030][RFC 7030 Enrollment over Secure Transport]] (EST).  It provides custom resources for EST services and a custom controller that reconciles certificate requests.
 
-~est-operator~ is written in Python using the [[https://kopf.readthedocs.io/en/stable/][kopf framework]].
+~estoperator~ is written in Python using the [[https://kopf.readthedocs.io/en/stable/][kopf framework]].
 
 This operator covers only a portion of RFC 7030; see [[docs/RFC7030.org][this document]] for an overview of what's implemented, planned, and not planned.
 
 See [[docs/DESIGN.org][this document]] for an overview of this operator's design.
 * Getting Started
 ** Prerequisites
-- Kubernetes v1.19.1 or later.  ~est-operator~ should run on v1.16 or later, but is only tested with v1.19.1.
-- Python 3.9 and packages.  [[./requirements.txt][requirements.txt]] has all Python package dependencies.  Install prerequistest with =pip=. 
-  #+BEGIN_SRC shell :results silent
-pip install -r requirements.txt
-  #+END_SRC
-  [[./dev-requirements.txt][dev-requirements.txt]] has additional Python packages for development purposes (e.g., building packages). The full set of reqiurements can be installed with =pip=. The order of requirements files is important; =dev-requirements.txt= depends on =requirement.txt=.
-  #+BEGIN_SRC shell :result silent
-pip install -r requirements.txt -r dev-requirements.txt
-  #+END_SRC
-See FIPS section below for installing dependencies in that mode.
-  
-  This repository uses [[https://github.com/jazzband/pip-tools][pip-tools]] to build requirements files.
-** Building
-** Installing
-See [[*Deployment]], below.  Also see [[docs/DESIGN.org][the design document]] for a deployment description. 
-* Testing
-** Style
-** Component
-** End-to-end
-* Deployment
-** In cluster
-TBD.
-** Out of cluster
-The operator can be run "out of cluster," meaning in a process that runs outside of Kubernetes control.  This is useful for development, testing, and debugging ~est-operator~.  This mode is not recommended for production.
+- Kubernetes v1.19.1 or later.  ~estoperator~ should run on v1.16 or later, but is only tested with v1.19.1.
+- Python 3.9 and packages.  [[./requirements.txt][requirements.txt]] has all Python package dependencies.  Install prerequistest with =pip=.
 
-The ~kopf~ command will use the current cluster context in ~KUBECONFIG~ by default.
+See FIPS section below for installing dependencies in that mode.
+
+** Installing
+For a production or other "in-cluster" installation, see [[Deployment]], below.  This section covers build and install for local development and test.
+
+Install requirements with ~pip~.  The requiremnets file installs ~estoperator~ in "editable" mode.
+#+begin_src bash
+pip install -r requirements.txt
+#+end_src
+
+This project uses [[https://github.com/jazzband/pip-tools][pip-tools]] and [[https://setuptools.pypa.io/en/latest/][setuptools]] to manage dependencies.  =requirements.in= holds the development dependencies.  =requirements.txt= is compiled with Python 3.9.
+
+** Running
+~estoperator~ can be run "out of cluster," meaning in a process that runs outside of Kubernetes control.  This is useful for development, testing, and debugging.  This mode is not recommended for production.
+
+The ~kopf~ command will use the current cluster context in ~KUBECONFIG~.
+TODO: operator permissions
 #+BEGIN_SRC shell :results silent
-kopf run est-operator.py
+kopf run --verbose -Am estoperator
 #+END_SRC
 
 See [[https://kopf.readthedocs.io/en/stable/][kopf documentation]] for more details of running in this mode.
+
+** Build
+~estoperator~ should build with any PEP 517 compatible build system.  The default requirements use the ~build~ module.
+#+begin_src bash
+python -m build
+#+end_src
+
+** Testing
+The test suite is developed with [[https://docs.pytest.org/en/6.2.x/][pytest]].
+*** Style
+TODO: style tests
+*** Unit tests
+TODO: unit tests
+*** End-to-end
+All end-to-end tests are marked "e2e" and require access to a cluster with [[https://cert-manager.io/][cert-manager]] installed.  The test suite uses [[https://github.com/kubernetes-client/python][the official Kubernetes python package]] and will authenticate using your ~KUBECONFIG~ current context.
+TODO: e2e tests
+TODO: e2e test permissions
+* Deployment
+TODO: cluster deployment (and manifests)
 * Federal Information Processing Standards (FIPS) 140-2 certified mode
 The operator can be built to satisfy FIPS 140-2 certification requirements.  FIPS 140-2 certification depends on the module and the platform.  A platform with Python dynamically linked to OpenSSL /and/ links OpenSSL to a validated version of the OpenSSL FIPS Object Module can demonstrate FIPS 140-2 certification.  Consult the [[https://csrc.nist.gov/projects/cryptographic-module-validation-program/validated-modules/search?SearchMode=Basic&ModuleName=OpenSSL&CertificateStatus=Active&ValidationYear=0][NIST Cryptographic Module Validation Program list of OpenSSL modules]] for combinations of OpenSSL and platform that are certified.
 
@@ -71,11 +84,13 @@ If you have a FIPS certified version of OpenSSL installed and installed dependen
 * Built with
 - Python 3.9
 - [[https://github.com/nolar/kopf][kopf framework]]
-- Docker
+- Docker / podman
+- Kubernetes client
+
 * Contibuting
-TBD
+TODO: contributing rules
 * Versioning
-TBD
+TODO: versioning
 * Authors
 - Timothy J. Miller - /initial work/ - [[https://github.com/Cerebus][Cerebus]]
 * License

@@ -10,6 +10,10 @@ aiohttp==3.8.0
     # via kopf
 aiosignal==1.2.0
     # via aiohttp
+asn1crypto==1.4.0
+    # via
+    #   certbuilder
+    #   oscrypto
 async-timeout==4.0.1
     # via aiohttp
 attrs==21.2.0
@@ -20,16 +24,22 @@ build==0.7.0
     # via -r requirements.in
 cachetools==4.2.4
     # via google-auth
+certbuilder==0.14.2
+    # via estoperator
 certifi==2021.10.8
     # via
     #   kubernetes
     #   requests
+cffi==1.15.0
+    # via cryptography
 charset-normalizer==2.0.7
     # via
     #   aiohttp
     #   requests
 click==8.0.3
     # via kopf
+cryptography==36.0.0
+    # via estoperator
 frozenlist==1.2.0
     # via
     #   aiohttp
@@ -54,6 +64,8 @@ multidict==5.2.0
     #   yarl
 oauthlib==3.1.1
     # via requests-oauthlib
+oscrypto==1.2.1
+    # via certbuilder
 packaging==21.2
     # via
     #   build
@@ -70,6 +82,8 @@ pyasn1==0.4.8
     #   rsa
 pyasn1-modules==0.2.8
     # via google-auth
+pycparser==2.21
+    # via cffi
 pyparsing==2.4.7
     # via packaging
 pytest==6.2.5

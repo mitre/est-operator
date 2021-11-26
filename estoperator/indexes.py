@@ -1,86 +1,49 @@
 #!/usr/bin/env python3
-"""Indexes used by handlers."""
+"""Controller indexes."""
+
+import base64
+import os
+from pathlib import Path
 
 import kopf
 from kubernetes import client
 
+from .server import WELLKNOWN
+
+
+@kopf.index("secrets", annotations={"cert-manager.io/issuer-group": "est.mitre.org"})
+def secrets_idx(namespace, name, annotations, **_):
+    """Index TLS secret references by certificate name."""
+    certificate = annotations["cert-manager.io/certificate-name"]
+    return {(namespace, certificate): name}
+
 
 @kopf.index("estissuers")
-@kopf.index("estclusterissuers")
-def anchor_idx(namespace, name, spec, **_):
-    """Index of namespaced issuer trust anchors."""
-    return {(namespace, name): spec.get("cacert")}
+@kopf.index(
+    "estclusterissuers", param=os.environ.get("DEFAULT_NAMESPACE", "est-operator")
+)
+def issuer_idx(namespace, name, spec, param, **_):
+    """Issuers index.
 
-
-@kopf.index("estissuers")
-@kopf.index("estclusterissuers", param="cert-manager")
-def creds_idx(namespace, name, spec, param, **_):
-    """Index of issuer credentials.
-
-    This index caches actual secrets. param provides the default namespace for
-    cluster issuers.
+    This index caches secret data. PARAM is the default namespace for
+    EstClusterIssuer credentials.
 
     """
-    space = param if param else namespace
+    ca = base64.b64encode(spec["cacert"].encode("ascii")).decode("ascii")
+    secret_ns = param if param else namespace
     secret_name = spec["secretRef"]["name"]
     api = client.CoreV1Api()
+    baseUrl = f"https://{spec['host']}:{spec.get('port', 443)}"
+    label = Path(spec.get("label", ""))
     try:
-        secret = api.read_namespaced_secret(secret_name, space)
+        secret = api.read_namespaced_secret(secret_name, secret_ns)
     except client.OpenApiException as err:
         raise kopf.TemporaryError(err) from err
-    return {(space, name): secret.data}
-
-
-@kopf.index("estorders")
-def orders_owner_idx(namespace, name, meta, **_):
-    """Index of estorders by owning certificaterequest."""
-    owner = meta.get("ownerReferences")[0]
-    return {(namespace, owner.get("name")): (namespace, name)}
-
-
-@kopf.index("estorders")
-def orders_certs_idx(namespace, name, status, field="status.certificate", **_):
-    """Index of completed certificates by order."""
-    return {(namespace, name): status.get("certificate")}
-
-
-@kopf.index("certificaterequests", field="spec.issuerRef.group", value="est.mitre.org")
-def approved_idx(namespace, name, status, **_):
-    """Index of approved CertificateRequests."""
-    conditions = status.get("conditions", [])
-    approved = [cond["status"] for cond in conditions if cond["type"] == "Approved"]
-    if "True" not in approved:
-        raise kopf.TemporaryError(
-            f"CertificateRequest ({namespace}, {name}) not approved."
-        )
-    return {(namespace, name): True}
-
-
-def is_est(spec, **_):
-    """Return true when spec.issuerRef.kind is EstIssuer or EstClusterIssuer."""
-    issuer = spec["issuerRef"]
-    return bool(issuer["group"] == "est.mitre.org")
-
-
-@kopf.index("certificates", field="status.renewalTime", when=is_est)
-def renewal_idx(namespace, name, spec, **_):
-    """Index of certificate renewal secrets.
-
-    This index caches actual secrets.
-
-    """
-    issuer = spec["issuerRef"]
-    secret_name = spec["secretName"]
-    api = client.CoreV1Api()
-    try:
-        secret = api.read_namespaced_secret(secret_name, namespace)
-    except client.OpenApiException as err:
-        raise kopf.TemporaryError(err) from err
-    return {(namespace, name): secret.data}
-
-
-@kopf.index("certificaterequests")
-def requests_owners_idx(namespace, name, meta, **_):
-    """Index of certificaterequests by owning certificate."""
-    owner = meta.get("ownerReferences")[0]
-    return {(namespace, owner["name"]): (namespace, name)}
+    return {
+        (namespace, name): {
+            "ca": ca,
+            "pem": spec["cacert"],
+            "cred": secret.data,
+            "url": baseUrl + str(WELLKNOWN / label),
+        }
+    }

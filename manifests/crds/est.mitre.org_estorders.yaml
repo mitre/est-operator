@@ -61,6 +61,10 @@ spec:
                     group:
                       type: string
                       pattern: "est.mitre.org"
+                    namespace:
+                      description: >-
+                        EstIssuer namespace; not present for EstClusterIssuer.
+                      type: string
                   required:
                     - name
                     - kind

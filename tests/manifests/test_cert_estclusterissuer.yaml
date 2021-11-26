@@ -14,7 +14,7 @@ spec:
     - client auth
   dnsNames:
     - example.com
-  secretName: test-cert-tls
+  secretName: test-cert-ci
   issuerRef:
     name: testrfc7030-cluster
     group: est.mitre.org
