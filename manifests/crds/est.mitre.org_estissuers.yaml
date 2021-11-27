@@ -76,8 +76,15 @@ spec:
               description: Status defines the observed state of EstIssuer
               type: object
               x-kubernetes-preserve-unknown-fields: true
+              properties:
+                ready:
+                  type: string
           type: object
       served: true
       storage: true
       subresources:
         status: {}
+      additionalPrinterColumns:
+        - jsonPath: .status.ready
+          name: Ready
+          type: string
