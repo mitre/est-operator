@@ -1,9 +1,28 @@
-#+TITLE: RFC 7030 Client Requirements Matrix
+#+TITLE: RFC 7030 Implementation Notes
+
+* Implementation decisions
+
+** Trust Anchor (TA) Database
+~estoperator~ implements the Explicit TA Database on each issuer resource.  The Implicit TA Database is not implemented.
+
+This decision simplifies the controller.  The Implicit TA Database requires the Explicit TA Database, and triggers requirements for manual intervention to validate trust decisions.  If manual intervention is required, it's simpler to validate the trust anchor "out of band" and update the issuer resource.
+
+** Server Authorization
+Servers are authorized /only/ through RFC 6125 methods.  ~id-kp-cmcRA~ extension validation is not implemented.
+
+This decision simplifies trust validation for HTTPS sessions, and ensures that HTTP Basic Authentication secrets are not unintentially leaked as required by other RFC 7030 requirements.
+
+** CA Distribution
+CA distribution and bootstrapping is not implemented.  The Explicit TA Database is manually updated with "out of band" procedures.  Bootstrapping and automated trust anchor updates add requirements that imply a command line interface.  Limited support for the ~/cacerts~ endpoint is implemented in order to validate that the TA is correct for each issuer, and mark issuers as not ready if the trust anchor is changes.
+
+This decision simplifies the controller and eliminates interactive client requirements.  Trust anchor updates are planned well in advance, and the tempo of certificate reissuance is such that short interruptions do not lead to service outages.  Validation that the current Explicit TA Database is current is implemented to provide notification that a TA has changed.  Revalidation of the issuer ~cacert~ occurs every ~DEFAULT_INTERVAL~ seconds (defaults to 1 week).
+
+* RFC 7030 Client Requirements Matrix
 
 | Section | Type     | Clause                                                                                   | Status          |
 |---------+----------+------------------------------------------------------------------------------------------+-----------------|
 |     3.1 | MUST     | be capable of generating and parsing Simple PKI messages                                 | Implemented     |
-|     3.1 | MUST     | request CA certificates from the EST server and parse the returned "bag" of certificates | TODO            |
+|     3.1 | MUST     | request CA certificates from the EST server and parse the returned "bag" of certificates | Not implemented |
 |     3.1 | OPTIONAL | Generating and parsing Full PKI messages                                                 | Not implemented |
 |     3.1 | OPTIONAL | Requesting CSR attributes and parsing the returned list                                  | Not implemented |
 
@@ -26,11 +45,11 @@
 |   3.3.1 | MUST        | Certificate validation [...] per RFC 5280                                                    | Implemented     |
 |   3.3.1 | MUST        | maintain a distinction between the use of Explicit and Implicit TA databases                 | Implemented     |
 |   3.3.1 | MUST        | perform authorization checks as specified in Section 3.6                                     | Implemented     |
-|   3.3.1 | MAY         | follow the procedure outlined in Section 4.1.1 for Bootstrap Distribution of CA certificates | TODO            |
+|   3.3.1 | MAY         | follow the procedure outlined in Section 4.1.1 for Bootstrap Distribution of CA certificates | Not implemented |
 |   3.3.2 | RECOMMENDED | TLS client authentication                                                                    | TODO            |
 |   3.3.2 | MAY         | HTTP-based client authentication                                                             | Implemented     |
-|   3.3.2 | MUST        | [use the certificate] to be renewed or rekeyed [...] for the TLS handshake                   | TODO            |
-|   3.3.2 | SHOULD      | use an alternate certificate                                                                 | TODO            |
+|   3.3.2 | MUST        | [use the certificate] to be renewed or rekeyed [...] for the TLS handshake                   | Implemented     |
+|   3.3.2 | SHOULD      | use an alternate certificate                                                                 | Not implemented |
 |   3.3.2 | MAY         | use a client certificate issued by a third party to authenticate itself                      | TODO            |
 |   3.3.2 | MUST        | Certificate validation [...] per RFC 5280                                                    | Implemented     |
 |   3.3.2 | MUST        | conform to the RFC 5280 profile                                                              | Implemented     |
@@ -51,17 +70,17 @@
 | Section | Type   | Clause                                                                            | Status          |
 |---------+--------+-----------------------------------------------------------------------------------+-----------------|
 |   4.1.1 |        | Bootstrap distribution                                                            | Not implemented |
-|   4.1.2 | MUST   | support the /cacerts function                                                     | TODO            |
-|   4.1.2 | SHOULD | request an up-to-date response before stored information has expired              | TODO            |
-|   4.1.2 | MUST   | authenticate the EST server                                                       | TODO            |
-|   4.1.3 | MUST   | be able to handle [root CA key update] in the response.                           | TODO            |
+|   4.1.2 | MUST   | support the /cacerts function                                                     | Implemented     |
+|   4.1.2 | SHOULD | request an up-to-date response before stored information has expired              | Implemented     |
+|   4.1.2 | MUST   | authenticate the EST server                                                       | Implemented     |
+|   4.1.3 | MUST   | be able to handle [root CA key update] in the response.                           | Not implemented |
 |   4.1.3 | MUST   | validated using normal [RFC5280] certificate path validation                      | Implemented     |
-|   4.1.3 | MUST   | store the extracted EST CA certificate as an Explicit TA database entry           | TODO            |
+|   4.1.3 | MUST   | store the extracted EST CA certificate as an Explicit TA database entry           | Not implemented |
 |   4.1.3 | MUST   | make the CA Certificate response information available to the end-entity software | Implemented     |
 
 | Section | Type       | Clause                                                                                      | Status          |
 |---------+------------+---------------------------------------------------------------------------------------------+-----------------|
-|     4.2 | RECOMMEDED | obtain the current CA certificates [...] before performing certificate request              | TODO            |
+|     4.2 | RECOMMEDED | obtain the current CA certificates [...] before performing certificate request              | Implemented     |
 |     4.2 | MUST       | authenticate the EST server                                                                 | Implemented     |
 |     4.2 | MUST       | verify the authorization of the EST server                                                  | Implemented     |
 |   4.2.1 | MUST       | include a Simple PKI Request                                                                | Implemented     |
