@@ -13,14 +13,20 @@ from .server import WELLKNOWN
 
 @kopf.index("secrets", annotations={"cert-manager.io/issuer-group": "est.mitre.org"})
 def secrets_idx(namespace, name, annotations, **_):
-    """Index TLS secret references by certificate name."""
+    """Index TLS secret references by certificate name.
+
+    This index is used for TLS client authentication for renewals.
+    """
     certificate = annotations["cert-manager.io/certificate-name"]
     return {(namespace, certificate): name}
 
 
 @kopf.index("estissuers")
 @kopf.index(
-    "estclusterissuers", param=os.environ.get("DEFAULT_NAMESPACE", "est-operator")
+    "estclusterissuers",
+    param=os.environ.get(
+        "DEFAULT_NAMESPACE", "est-operator", field="status.ready", value="Ready"
+    ),
 )
 def issuer_idx(namespace, name, spec, param, **_):
     """Issuers index.

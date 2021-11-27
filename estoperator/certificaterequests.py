@@ -87,24 +87,23 @@ def certificate(namespace, annotations, spec, status, patch, issuer_idx, **_):
     value=kopf.ABSENT,
     when=kopf.all_([is_est, is_approved, kopf.not_(is_initial)]),
 )
-def certificate(namespace, annotations, spec, status, patch, issuer_idx, **_):
+def certificate(
+    namespace, annotations, spec, status, patch, issuer_idx, secrets_idx, **_
+):
     """Handle certificate renewal (basic auth)."""
-    # TODO: Change this to client cert authN.
-    # get Cert from annotation cert-manager.io/certificate-name
-    # get secret from where
-    # write secret to tempfiles
-    # set kwargs["cert"] = (certfile, keyfile)
     issuer = get_issuer(namespace, spec["issuerRef"], issuer_idx)
     request = base64.b64decode(spec["request"])
-    kwargs = {
-        "auth": (
-            base64.b64decode(issuer["cred"]["username"]).decode(),
-            base64.b64decode(issuer["cred"]["password"]).decode(),
+    secret = get_secret(namespace, annotations, secrets_idx)
+    with NamedTemporaryFile() as cert, NamedTemporaryFile() as key:
+        cert.writelines(base64.b64decode(secret.data["tls.crt"]))
+        key.writelines(base64.b64decode(secret.data["tls.key"]))
+        cert.flush()
+        key.flush()
+        kwargs = {"cert": (cert.name, key.name)}
+        certs = post_pkcs10_request(
+            issuer["url"] + "/simplereenroll", issuer["pem"], request, **kwargs
         )
-    }
-    certs = post_pkcs10_request(
-        issuer["url"] + "/simplereenroll", issuer["pem"], request, **kwargs
-    )
+        # TODO: Fall back to basic auth
     conditions = status.get("conditions", [])
     others = [cond for cond in conditions if cond["type"] != "Ready"]
     condition = dict(

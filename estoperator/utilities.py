@@ -9,6 +9,7 @@ import kopf
 import requests
 from cryptography.hazmat.primitives.serialization import Encoding, pkcs7
 from dateutil.parser import parse
+from kubernetes import client
 
 
 class SSLContextAdapter(requests.adapters.HTTPAdapter):
@@ -88,3 +89,17 @@ def get_issuer(namespace, issuer_ref, issuer_idx):
     if issuer is None:
         raise kopf.TemporaryError(f"No such issuer {issuer_ref} in {space} namespace.")
     return issuer
+
+
+def get_secret(namespace, annotations, secrets_idx):
+    """Retrieve secret for reenrollment."""
+    name = annotations.get("cert-manager.io/certificate-name")
+    secret_name = next(item for item in secrets_idx.get((namespace, name), [None]))
+    if secret_name is None:
+        raise kopf.TemporaryError(f"Secret {secret_name} not found.")
+    try:
+        api = client.CoreV1Api()
+        secret = api.read_namespaced_secret(secret_name, namespace)
+    except client.OpenApiException as err:
+        raise kopf.TemporaryError() from err
+    return secret
