@@ -107,7 +107,7 @@ estoperator -> estoperator : cache
 #+BEGIN_SRC plantuml :file images/act-certificaterequest.png :cache yes :results drawer :post caption_wrap("~CertificateRequest~ activity", *this*)
 hide footbox
 autonumber
-mainframe **act** estissuer_certrequest_handler [EstOrder]
+mainframe **act** estoperator_certificaterequest [certificate]
 actor User
 control "cert-manager" as certmgr
 control "estoperator" as estoperator
