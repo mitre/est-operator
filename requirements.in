@@ -1,4 +1,4 @@
-# for non-FIPS versions
-cryptography
-pyopenssl
--r base-requirements.txt
+setuptools
+wheel
+build
+-e file:.
