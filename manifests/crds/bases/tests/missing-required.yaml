@@ -1,7 +1,0 @@
----
-apiVersion: est.mitre.org/v1alpha1
-kind: EstIssuer
-metadata:
-  name: estissuer-missing-required
-spec:
-  host: testrfc7030.com

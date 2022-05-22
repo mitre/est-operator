@@ -8,7 +8,8 @@ from lightkube.core.dataclasses_dict import DataclassDictMixIn
 from lightkube.models.core_v1 import SecretReference
 from lightkube.models.meta_v1 import ObjectMeta
 
-GROUP = "est.mitre.org"
+from estissuer import GROUP
+
 VERSION = "v1alpha1"
 
 
