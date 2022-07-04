@@ -1,5 +1,0 @@
-setuptools
-wheel
-build
-pytest
--e file:.
