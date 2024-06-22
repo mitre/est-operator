@@ -1,0 +1,114 @@
+% Created 2024-06-16 Sun 14:04
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{cerebus2}
+\date{\today}
+\title{Certificate Manager Enrollment Over Secure Transport}
+\hypersetup{
+ pdfauthor={cerebus2},
+ pdftitle={Certificate Manager Enrollment Over Secure Transport},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{About}
+\label{sec:org210998c}
+\texttt{estissuer} is a \href{https://cert-manager.io/}{cert-manager} \href{https://cert-manager.io/docs/configuration/external/}{External certificate issuer} that implements a subset of \href{https://tools.ietf.org/html/rfc7030}{RFC 7030 Enrollment over Secure Transport} (EST).  It provides custom resources for EST services and a custom controller that reconciles certificate requests.
+
+\texttt{est-operator} is written in Python using the \href{https://kopf.readthedocs.io/en/stable/}{kopf framework} and \href{https://lightkube.readthedocs.io/en/latest/}{lightkube}.
+
+This operator covers only a portion of RFC 7030; see \href{docs/RFC7030.org}{this document} for an overview of what's implemented, planned, and not planned.
+
+See \href{docs/DESIGN.org}{this file} for an overview of this operator's design.
+\section{Getting Started}
+\label{sec:org1faa682}
+\subsection{Prerequisites}
+\label{sec:orgdf6bf16}
+\subsection{Building}
+\label{sec:orgfad95ca}
+\subsection{Installing}
+\label{sec:orgfbb7fb3}
+See \ref{sec:orgfbb80ee}, below.  Also see \href{docs/DESIGN.org}{the design document} for a deployment description.
+\section{Testing}
+\label{sec:orgc6b7dc8}
+\subsection{Style}
+\label{sec:org1760767}
+\subsection{Component}
+\label{sec:orgd7222ec}
+\subsection{End-to-end}
+\label{sec:orgd39ca9f}
+\section{Deployment}
+\label{sec:orgfbb80ee}
+\subsection{In cluster}
+\label{sec:org57b8ff8}
+TBD.
+\subsection{Out of cluster}
+\label{sec:orgadf18ec}
+\section{Usage}
+\label{sec:orgb76633e}
+\begin{itemize}
+\item EstIssuer and EstClusterIssuer secrets must be passwords and labeled "est.mitre.org/registration=true".
+\item Certificate secrets must be labeled "est.mitre.org/certificate=true".
+\begin{itemize}
+\item RFC 7030 renewals require mTLS authentication even when initial renewal uses a password regitration credential, so this label allows the controller to track certificate private keys.
+\end{itemize}
+\end{itemize}
+
+\section{Federal Information Processing Standards (FIPS) 140-2 certified mode}
+\label{sec:org99c2302}
+This controller can be built to satisfy FIPS 140-2 certification requirements.  FIPS 140-2 certification depends on the module and the platform.  A platform with Python dynamically linked to OpenSSL \emph{and} links OpenSSL to a validated version of the OpenSSL FIPS Object Module can demonstrate FIPS 140-2 certification.  Consult the \href{https://csrc.nist.gov/projects/cryptographic-module-validation-program/validated-modules/search?SearchMode=Basic\&ModuleName=OpenSSL\&CertificateStatus=Active\&ValidationYear=0}{NIST Cryptographic Module Validation Program list of OpenSSL modules} for combinations of OpenSSL and platform that are certified.
+
+\textbf{Note}: OpenSSL 1.0.2 is no longer supported by the OpenSSL project, but OpenSSL FIPS Object Module 2.0 is not compatible with OpenSSL 1.1.  A new version is \href{https://www.openssl.org/blog/blog/2018/09/25/fips/}{not available nor certified yet.}
+
+Other FIPS certified modules are available (e.g., GnuTLS and Network Security Services) but the work to integrate these modules is extensive.  We welcome merge requests on this topic.
+
+\subsection{Building a FIPS version}
+\label{sec:org7f2ebc0}
+
+\subsection{Building a FIPS container image}
+\label{sec:org2e58573}
+
+\subsection{Running a FIPS version out of cluster}
+\label{sec:org33ac29c}
+
+\section{Built with}
+\label{sec:orgbbdf78a}
+
+\section{Contibuting}
+\label{sec:orge1205d5}
+TBD
+\section{Versioning}
+\label{sec:orge329c77}
+TBD
+\section{Authors}
+\label{sec:org29dba9c}
+\begin{itemize}
+\item Timothy J. Miller - \emph{initial work} - \href{https://github.com/Cerebus}{Cerebus}
+\end{itemize}
+\section{License}
+\label{sec:orga6ffb93}
+\href{./LICENSE}{Apache License v2.0}
+\section{Acknowledgements}
+\label{sec:org11c9880}
+\begin{itemize}
+\item \href{https://www.mitre.org}{The MITRE Corporation} for allowing this work to be open sourced.
+\item \href{https://cert-manager.io}{Jetstack and all the cert-manager contributors} for the framework that makes this extension possible.
+\item \href{https://github.com/nolar}{Sergey Vasilyev} for kopf, so I don't have to learn Go yet.
+\end{itemize}
+\end{document}

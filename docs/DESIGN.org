@@ -9,6 +9,14 @@ echo "$data"
 
 * Concept
 This operator is implemented as [[https://cert-manager.io/docs/configuration/external/][an External issuer type]] for [[https://cert-manager.io/][cert-manager]].  In accordance with the documentation, we define a new Issuer type and a controller that watches the ~CertificateRequest~ resource and implements the [[https://tools.ietf.org/html/rfc7030][RFC 7030 interface]].  The controller communucates back to ~cert-manager~ via the ~CertificateRequest~ resource status and conditions fields.
+
+
+* Lifecycle
+** EstOrder
+- Created for each CertificateRequest, containing the CSR and credential.
+  - If the order is new, then credential is the RA credential from the Est{Cluster}Issuer.
+  - If the order is a reissue, then the credential is the TLS secret from the previous Certificate.
+
 * Custom Resources
 ~est-operator~ includes three custom resources: ~EstIssuer~, ~EstClusterIssuer~, and ~EstOrder~.  In addition, the ~CertificateRequest~ resource from [[https://cert-manager.io/][cert-manager]] is used in the certificate issuance process, Kubernetes ~Secret~ resources of type =kubernetes.io/basic-auth= are used.
 #+BEGIN_SRC plantuml :file images/classes.png :cache yes :results drawer :post caption_wrap("~est-operator~ resources", *this*)

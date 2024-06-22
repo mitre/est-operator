@@ -3,10 +3,9 @@
 
 from dataclasses import dataclass
 from typing import List, Optional
-
-from lightkube.core.dataclasses_dict import DataclassDictMixIn
-from lightkube.models.core_v1 import SecretReference
-from lightkube.models.meta_v1 import ObjectMeta
+from estissuer.models import DataClassJsonCamelMixIn
+from estissuer.models.kubernetes_meta_v1 import ObjectMeta
+from estissuer.models.kubernetes_core_v1 import SecretReference
 
 from estissuer import GROUP
 
@@ -14,34 +13,69 @@ VERSION = "v1alpha1"
 
 
 @dataclass
-class EstCondition(DataclassDictMixIn):
+class EstCondition(DataClassJsonCamelMixIn):
     """EstCondition."""
 
 
 @dataclass
-class EstIssuerSpec(DataclassDictMixIn):
+class EstIssuerSpec(DataClassJsonCamelMixIn):
     """EstIssuerSpec model."""
 
     host: str
     cacert: str
-    port: Optional[int] = 443
-    label: Optional[str] = None
-    secretRef: Optional[SecretReference] = None
+    port: Optional[int]
+    label: Optional[str]
+    secret_ref: Optional[SecretReference]
 
 
 @dataclass
-class EstIssuerStatus(DataclassDictMixIn):
+class EstIssuerStatus(DataClassJsonCamelMixIn):
     """EstIssuerStatus."""
 
-    conditions: Optional[List[EstCondition]] = None
+    conditions: Optional[List[EstCondition]]
 
 
 @dataclass
-class EstIssuer(DataclassDictMixIn):
+class EstIssuer(DataClassJsonCamelMixIn):
     """EstIssuer model."""
 
-    apiVesion: str = f"{GROUP}/{VERSION}"
+    metadata: Optional[ObjectMeta]
+    spec: Optional[EstIssuerSpec]
+    status: Optional[EstIssuerStatus]
+    api_version: str = f"{GROUP}/{VERSION}"
     kind: str = "EstIssuer"
-    metadata: Optional[ObjectMeta] = None
-    spec: Optional[EstIssuerSpec] = None
-    status: Optional[EstIssuerStatus] = None
+
+
+@dataclass
+class EstClusterIssuer(DataClassJsonCamelMixIn):
+    """EstClusterIssuer model."""
+
+    metadata: Optional[ObjectMeta]
+    spec: Optional[EstIssuerSpec]
+    status: Optional[EstIssuerStatus]
+    api_version: str = f"{GROUP}/{VERSION}"
+    kind: str = "EstClusterIssuer"
+
+
+# @dataclass
+# @dataclass_json
+# class EstOrderSpec:
+#     """EstOrderSpec model."""
+
+
+# @dataclass
+# @dataclass_json
+# class EstOrderStatus:
+#     """EstOrderStatus model."""
+
+
+# @dataclass
+# @dataclass_json
+# class EstOrder:
+#     """EstOrder model."""
+
+#     apiVersion: str = f"{GROUP}/{VERSION}"
+#     kind: str = "EstOrder"
+#     metadata: Optional[ObjectMeta] = None
+#     spec: Optional[EstOrderSpec] = None
+#     status: Optional[EstOrderStatus] = None
