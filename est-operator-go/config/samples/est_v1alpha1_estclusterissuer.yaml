@@ -1,0 +1,9 @@
+apiVersion: est.mitre.org/v1alpha1
+kind: EstClusterIssuer
+metadata:
+  labels:
+    app.kubernetes.io/name: est-operator-go
+    app.kubernetes.io/managed-by: kustomize
+  name: estclusterissuer-sample
+spec:
+  # TODO(user): Add fields here

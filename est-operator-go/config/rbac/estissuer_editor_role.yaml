@@ -1,0 +1,33 @@
+# This rule is not used by the project est-operator-go itself.
+# It is provided to allow the cluster admin to help manage permissions for users.
+#
+# Grants permissions to create, update, and delete resources within the est.mitre.org.
+# This role is intended for users who need to manage these resources
+# but should not control RBAC or manage permissions for others.
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: est-operator-go
+    app.kubernetes.io/managed-by: kustomize
+  name: estissuer-editor-role
+rules:
+- apiGroups:
+  - est.mitre.org
+  resources:
+  - estissuers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - est.mitre.org
+  resources:
+  - estissuers/status
+  verbs:
+  - get

@@ -1,0 +1,6 @@
+## Append samples of your project ##
+resources:
+- est_v1alpha1_estissuer.yaml
+- est_v1alpha1_estclusterissuer.yaml
+- est_v1alpha1_estorder.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
