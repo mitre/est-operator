@@ -42,7 +42,8 @@ func TestFetchCACerts(t *testing.T) {
 
 	// We must override the httpClient because NewClient uses a transport with TLS
 	// and httptest.NewServer is plain HTTP.
-	client.httpClient = ts.Client()
+	estClient := client.(*estClient)
+	estClient.httpClient = ts.Client()
 
 	certs, err := client.FetchCACerts(context.Background())
 	if err != nil {
