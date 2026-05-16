@@ -238,3 +238,10 @@ dmypy.json
 .prof
 
 # End of https://www.toptal.com/developers/gitignore/api/emacs,python,macos,linux
+
+# Local project artifacts
+.pi/
+cert.pem
+key.pem
+continue.md
+AGENTS.md
