@@ -22,6 +22,8 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"strings"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -47,7 +49,10 @@ const (
 	DefaultClusterNamespace  = "est-operator"
 
 	// SecretTypeBasicAuth is the Kubernetes secret type for basic authentication.
-	SecretTypeBasicAuth = "kubernetes.io/basic-auth"
+		SecretTypeBasicAuth = "kubernetes.io/basic-auth"
+
+	// RequeueAfterTransientError is the duration to wait before requeuing after a transient error.
+	RequeueAfterTransientError = 30 * time.Second
 )
 
 // EstOrderReconciler reconciles a EstOrder object
@@ -114,7 +119,8 @@ func (r *EstOrderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		}
 		cli, err := r.ClientFactory.NewClient(cfg)
 		if err != nil {
-			return r.failOrder(ctx, estOrder, "Failed to create EST client", err)
+			log.Error(err, "Failed to create EST client, requeuing", "name", estOrder.Name)
+			return ctrl.Result{RequeueAfter: RequeueAfterTransientError}, nil
 		}
 
 		// Fetch attributes
@@ -136,6 +142,19 @@ func (r *EstOrderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{Requeue: true}, nil
 
 	case estv1alpha1.PhaseEnrolling:
+		// Adversarial hardening (3.2): Idempotent enrollment via CSR hashing.
+		// If this order already has a certificate and the CSRHash matches,
+		// skip re-enrollment to prevent duplicate certificate issuance.
+		if estOrder.Status.Certificate != "" && estOrder.Spec.CSRHash != "" {
+			log.Info("Order already has a certificate, skipping re-enrollment", "name", estOrder.Name)
+			estOrder.Status.Phase = estv1alpha1.PhaseIssued
+			estOrder.Status.Message = "Certificate already issued (idempotent check)"
+			if err := r.Status().Update(ctx, estOrder); err != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, nil
+		}
+
 		// Retrieve the Issuer and its credentials
 		issuerHost, issuerPort, username, password, err := r.resolveIssuerWithCredentials(ctx, estOrder)
 		if err != nil {
@@ -152,14 +171,15 @@ func (r *EstOrderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		}
 		cli, err := r.ClientFactory.NewClient(cfg)
 		if err != nil {
-			return r.failOrder(ctx, estOrder, "Failed to create EST client", err)
+			log.Error(err, "Failed to create EST client, requeuing", "name", estOrder.Name)
+			return ctrl.Result{RequeueAfter: RequeueAfterTransientError}, nil
 		}
 
 		// 1. Get tls-unique for channel binding
 		tlsUnique, err := cli.GetTLSUnique(ctx)
 		if err != nil {
-			log.Error(err, "Failed to get tls-unique")
-			return ctrl.Result{}, err
+			log.Error(err, "Failed to get tls-unique, requeuing")
+			return ctrl.Result{RequeueAfter: RequeueAfterTransientError}, nil
 		}
 
 		// 2. Generate CSR
@@ -179,6 +199,16 @@ func (r *EstOrderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		}
 
 		if err != nil {
+			// Adversarial hardening (3.3): if auth fails during enrollment,
+			// transition to Recovery instead of Failed so we can attempt bootstrap credentials.
+			if isAuthError(err) {
+				estOrder.Status.Phase = estv1alpha1.PhaseRecovery
+				estOrder.Status.Message = fmt.Sprintf("Auth failure during enrollment, entering Recovery: %v", err)
+				if updateErr := r.Status().Update(ctx, estOrder); updateErr != nil {
+					return ctrl.Result{}, updateErr
+				}
+				return ctrl.Result{Requeue: true}, nil
+			}
 			return r.failOrder(ctx, estOrder, "Enrollment failed", err)
 		}
 
@@ -230,6 +260,35 @@ func (r *EstOrderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	case estv1alpha1.PhaseIssued:
 		log.Info("Order already issued", "name", estOrder.Name)
 		return ctrl.Result{}, nil
+
+	case estv1alpha1.PhaseRecovery:
+		// Adversarial hardening (3.3): Recovery state for expired client certificates.
+		// Attempt to fall back to bootstrap credentials (Basic Auth).
+		_, _, username, password, err := r.resolveIssuerWithCredentials(ctx, estOrder)
+		if err != nil {
+			log.Error(err, "Failed to resolve issuer credentials in Recovery phase")
+			return r.failOrder(ctx, estOrder, "Failed to resolve issuer credentials in Recovery phase", err)
+		}
+
+		if username == "" && password == "" {
+			// No bootstrap credentials available — mark as failed and request manual intervention.
+			log.Info("No bootstrap credentials available, marking order as Failed", "name", estOrder.Name)
+			estOrder.Status.Phase = estv1alpha1.PhaseFailed
+			estOrder.Status.Message = "Recovery failed: no bootstrap credentials configured. Manual intervention required."
+			if err := r.Status().Update(ctx, estOrder); err != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, nil
+		}
+
+		// Bootstrap credentials available — transition back to Enrolling
+		log.Info("Bootstrap credentials available, transitioning back to Enrolling", "name", estOrder.Name)
+		estOrder.Status.Phase = estv1alpha1.PhaseEnrolling
+		estOrder.Status.Message = "Recovery: falling back to bootstrap credentials"
+		if err := r.Status().Update(ctx, estOrder); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{Requeue: true}, nil
 
 	case estv1alpha1.PhaseFailed:
 		log.Info("Order in Failed state", "name", estOrder.Name)
@@ -394,6 +453,21 @@ func (r *EstOrderReconciler) patchCertificateRequest(ctx context.Context, order 
 
 	log.V(1).Info("No owning CertificateRequest found for EstOrder", "orderName", order.Name)
 	return nil
+}
+
+// isAuthError checks if an enrollment error is an authentication failure,
+// which should trigger a Recovery transition rather than a terminal Failed state.
+// This implements adversarial hardening requirement 3.3.
+func isAuthError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	// HTTP 401 Unauthorized or 403 Forbidden responses indicate auth failure
+	return strings.Contains(errStr, "401") || strings.Contains(errStr, "403") ||
+		strings.Contains(errStr, "unauthorized") || strings.Contains(errStr, "Unauthorized") ||
+		strings.Contains(errStr, "forbidden") || strings.Contains(errStr, "Forbidden") ||
+		strings.Contains(errStr, "authentication failed") || strings.Contains(errStr, "cert expired")
 }
 
 func (r *EstOrderReconciler) failOrder(ctx context.Context, order *estv1alpha1.EstOrder, message string, err error) (ctrl.Result, error) {

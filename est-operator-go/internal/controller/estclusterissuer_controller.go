@@ -16,48 +16,7 @@ limitations under the License.
 
 package controller
 
-import (
-	"context"
-
-	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	estv1alpha1 "git.mitre.org/est-operator/api/v1alpha1"
-)
-
-// EstClusterIssuerReconciler reconciles a EstClusterIssuer object
-type EstClusterIssuerReconciler struct {
-	client.Client
-	Scheme *runtime.Scheme
-}
-
-// +kubebuilder:rbac:groups=est.mitre.org,resources=estclusterissuers,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=est.mitre.org,resources=estclusterissuers/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=est.mitre.org,resources=estclusterissuers/finalizers,verbs=update
-
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the EstClusterIssuer object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.23.3/pkg/reconcile
-func (r *EstClusterIssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = logf.FromContext(ctx)
-
-	// TODO(user): your logic here
-
-	return ctrl.Result{}, nil
-}
-
-// SetupWithManager sets up the controller with the Manager.
-func (r *EstClusterIssuerReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&estv1alpha1.EstClusterIssuer{}).
-		Named("estclusterissuer").
-		Complete(r)
-}
+// The EstClusterIssuerReconciler has been merged into estissuer_controller.go
+// along with the shared connectivity check and RootPin validation logic.
+// Both EstIssuer and EstClusterIssuer now share the same connectivity check
+// and RootPin validation via the checkIssuerConnectivity function.

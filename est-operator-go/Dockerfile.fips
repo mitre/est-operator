@@ -1,0 +1,32 @@
+# Build the manager binary with FIPS 140-2 compliance via boringcrypto
+# This Dockerfile produces a binary that uses BoringSSL's FIPS module,
+# which is validated under FIPS 140-2.
+FROM golang:1.26 AS builder
+ARG TARGETOS
+ARG TARGETARCH
+
+WORKDIR /workspace
+# Copy the Go Modules manifests
+COPY go.mod go.mod
+COPY go.sum go.sum
+# Cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
+RUN go mod download
+
+# Copy the Go source
+COPY . .
+
+# Build with boringcrypto enabled for FIPS 140-2 compliance
+# GOEXPERIMENT=boringcrypto enables the use of BoringSSL's FIPS module
+RUN CGO_ENABLED=1 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} \
+    GOEXPERIMENT=boringcrypto \
+    go build -a -o manager cmd/main.go
+
+# Use distroless as minimal base image to package the manager binary
+# Refer to https://github.com/GoogleContainerTools/distroless for more details
+FROM gcr.io/distroless/static-debian12:nonroot
+WORKDIR /
+COPY --from=builder /workspace/manager .
+USER 65532:65532
+
+ENTRYPOINT ["/manager"]

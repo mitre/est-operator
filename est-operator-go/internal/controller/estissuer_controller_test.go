@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"strings"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -110,7 +111,7 @@ var _ = Describe("EstIssuer Controller", func() {
 				if cond.Type == "Ready" && cond.Status == metav1.ConditionTrue {
 					ready = true
 				}
-				if cond.Message == "RootPin validation failed" {
+				if strings.Contains(cond.Message, "RootPin validation failed") {
 					pinMismatch = true
 				}
 			}

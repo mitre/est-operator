@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"fmt"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -466,6 +467,9 @@ func TestCertificateRequestReconciler_CreatesEstOrder(t *testing.T) {
 	assert.NotEmpty(t, order.OwnerReferences)
 	assert.Equal(t, "CertificateRequest", order.OwnerReferences[0].Kind)
 	assert.Equal(t, "test-certreq", order.OwnerReferences[0].Name)
+
+	// Verify CSRHash is set (adversarial hardening 3.2)
+	assert.NotEmpty(t, order.Spec.CSRHash, "CSRHash should be set for idempotent enrollment")
 }
 
 func TestCertificateRequestReconciler_SkipsAlreadyReady(t *testing.T) {
@@ -857,4 +861,255 @@ func TestCSRHashGeneration(t *testing.T) {
 
 func ptrBool(b bool) *bool {
 	return &b
+}
+
+func TestEstOrderReconciler_IdempotentEnrollment(t *testing.T) {
+	// If the order already has a certificate and CSRHash is set,
+	// it should skip re-enrollment and go directly to Issued.
+	s := newTestScheme()
+	ctx := context.Background()
+
+	order := &estv1alpha1.EstOrder{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "EstOrder",
+			APIVersion: "est.mitre.org/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-order-idempotent",
+			Namespace: "default",
+		},
+		Spec: estv1alpha1.EstOrderSpec{
+			IssuerRef: estv1alpha1.IssuerRef{
+				Name:  "test-issuer",
+				Kind:  "EstIssuer",
+				Group: "est.mitre.org",
+			},
+			Request: "base64csr",
+			CSRHash: "sha256hashvalue",
+		},
+		Status: estv1alpha1.EstOrderStatus{
+			Phase:        estv1alpha1.PhaseEnrolling,
+			Certificate:  "-----BEGIN CERTIFICATE-----\nalready-issued\n-----END CERTIFICATE-----",
+		},
+	}
+
+	issuer := &estv1alpha1.EstIssuer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-issuer",
+			Namespace: "default",
+		},
+		Spec: estv1alpha1.EstIssuerSpec{
+			Host: "est.example.com",
+			Port: 443,
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(s).
+		WithObjects(order, issuer).
+		WithStatusSubresource(order).
+		Build()
+
+	// MockClientFactory should NEVER be called if idempotency works
+	mockFactory := new(MockClientFactory)
+
+	reconciler := &EstOrderReconciler{
+		Client:        fakeClient,
+		Scheme:        s,
+		ClientFactory: mockFactory,
+	}
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: "default",
+			Name:      "test-order-idempotent",
+		},
+	}
+
+	result, err := reconciler.Reconcile(ctx, req)
+	assert.NoError(t, err)
+	assert.False(t, result.Requeue)
+
+	updatedOrder := &estv1alpha1.EstOrder{}
+	err = fakeClient.Get(ctx, types.NamespacedName{Namespace: "default", Name: "test-order-idempotent"}, updatedOrder)
+	assert.NoError(t, err)
+	assert.Equal(t, estv1alpha1.PhaseIssued, updatedOrder.Status.Phase)
+	assert.Contains(t, updatedOrder.Status.Message, "idempotent")
+
+	// Verify the mock factory was never called (no enrollment happened)
+	mockFactory.AssertNotCalled(t, "NewClient")
+}
+
+func TestSha256Base64(t *testing.T) {
+	// Verify that sha256Base64 produces a deterministic hash
+	data := []byte("test-csr-data")
+	hash1 := sha256Base64(data)
+	hash2 := sha256Base64(data)
+	assert.Equal(t, hash1, hash2, "Hash should be deterministic")
+	assert.NotEmpty(t, hash1, "Hash should not be empty")
+
+	// Verify different data produces different hash
+	otherData := []byte("different-csr-data")
+	hash3 := sha256Base64(otherData)
+	assert.NotEqual(t, hash1, hash3, "Different data should produce different hash")
+}
+
+func TestEstOrderReconciler_RecoveryWithBootstrapCredentials(t *testing.T) {
+	s := newTestScheme()
+	ctx := context.Background()
+
+	issuer := &estv1alpha1.EstIssuer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-issuer",
+			Namespace: "default",
+		},
+		Spec: estv1alpha1.EstIssuerSpec{
+			Host:       "est.example.com",
+			Port:       443,
+			SecretName: "est-creds",
+		},
+	}
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "est-creds",
+			Namespace: "default",
+		},
+		Type: corev1.SecretTypeBasicAuth,
+		Data: map[string][]byte{
+			"username": []byte("bootstrap-user"),
+			"password": []byte("bootstrap-pass"),
+		},
+	}
+
+	order := &estv1alpha1.EstOrder{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-order-recovery",
+			Namespace: "default",
+		},
+		Spec: estv1alpha1.EstOrderSpec{
+			IssuerRef: estv1alpha1.IssuerRef{
+				Name:  "test-issuer",
+				Kind:  "EstIssuer",
+				Group: "est.mitre.org",
+			},
+		},
+		Status: estv1alpha1.EstOrderStatus{
+			Phase: estv1alpha1.PhaseRecovery,
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(s).
+		WithObjects(order, issuer, secret).
+		WithStatusSubresource(order).
+		Build()
+
+	reconciler := &EstOrderReconciler{
+		Client:        fakeClient,
+		Scheme:        s,
+		ClientFactory: new(MockClientFactory),
+	}
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: "default",
+			Name:      "test-order-recovery",
+		},
+	}
+
+	result, err := reconciler.Reconcile(ctx, req)
+	assert.NoError(t, err)
+	assert.True(t, result.Requeue)
+
+	updatedOrder := &estv1alpha1.EstOrder{}
+	err = fakeClient.Get(ctx, types.NamespacedName{Namespace: "default", Name: "test-order-recovery"}, updatedOrder)
+	assert.NoError(t, err)
+	assert.Equal(t, estv1alpha1.PhaseEnrolling, updatedOrder.Status.Phase)
+	assert.Contains(t, updatedOrder.Status.Message, "Recovery")
+}
+
+func TestEstOrderReconciler_RecoveryNoBootstrapCredentials(t *testing.T) {
+	s := newTestScheme()
+	ctx := context.Background()
+
+	order := &estv1alpha1.EstOrder{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-order-recovery-nocreds",
+			Namespace: "default",
+		},
+		Spec: estv1alpha1.EstOrderSpec{
+			IssuerRef: estv1alpha1.IssuerRef{
+				Name:  "test-issuer",
+				Kind:  "EstIssuer",
+				Group: "est.mitre.org",
+			},
+		},
+		Status: estv1alpha1.EstOrderStatus{
+			Phase: estv1alpha1.PhaseRecovery,
+		},
+	}
+
+	// Issuer with no SecretName
+	issuer := &estv1alpha1.EstIssuer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-issuer",
+			Namespace: "default",
+		},
+		Spec: estv1alpha1.EstIssuerSpec{
+			Host: "est.example.com",
+			Port: 443,
+			// No SecretName
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(s).
+		WithObjects(order, issuer).
+		WithStatusSubresource(order).
+		Build()
+
+	reconciler := &EstOrderReconciler{
+		Client:        fakeClient,
+		Scheme:        s,
+		ClientFactory: new(MockClientFactory),
+	}
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: "default",
+			Name:      "test-order-recovery-nocreds",
+		},
+	}
+
+	result, err := reconciler.Reconcile(ctx, req)
+	assert.NoError(t, err)
+	assert.Equal(t, false, result.Requeue) // Terminal state, no requeue
+
+	updatedOrder := &estv1alpha1.EstOrder{}
+	err = fakeClient.Get(ctx, types.NamespacedName{Namespace: "default", Name: "test-order-recovery-nocreds"}, updatedOrder)
+	assert.NoError(t, err)
+	assert.Equal(t, estv1alpha1.PhaseFailed, updatedOrder.Status.Phase)
+	assert.Contains(t, updatedOrder.Status.Message, "no bootstrap credentials")
+}
+
+func TestIsAuthError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{"401 unauthorized", fmt.Errorf("unexpected status from /simpleenroll: 401 Unauthorized"), true},
+		{"403 forbidden", fmt.Errorf("unexpected status from /simpleenroll: 403 Forbidden"), true},
+		{"auth failed", fmt.Errorf("authentication failed"), true},
+		{"cert expired", fmt.Errorf("cert expired"), true},
+		{"network error", fmt.Errorf("connection refused"), false},
+		{"nil error", nil, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, isAuthError(tt.err))
+		})
+	}
 }

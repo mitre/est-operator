@@ -50,6 +50,11 @@ type EstClusterIssuerSpec struct {
 	// Name of a Secret with the EST portal credential. Secret must be type kubernetes.io/basic-auth.
 	// +optional
 	SecretName string `json:"secretName,omitempty"`
+
+	// Root certificate pin for adversarial hardening (3.1).
+	// When set, the operator will verify the /cacerts response against this pin.
+	// +optional
+	RootPin string `json:"rootPin,omitempty"`
 }
 
 // EstClusterIssuerStatus defines the observed state of EstClusterIssuer.

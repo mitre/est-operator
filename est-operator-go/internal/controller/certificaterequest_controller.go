@@ -18,6 +18,8 @@ package controller
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -100,6 +102,7 @@ func (r *CertificateRequestReconciler) Reconcile(ctx context.Context, req ctrl.R
 				Group: certReq.Spec.IssuerRef.Group,
 			},
 			Request: string(certReq.Spec.Request),
+			CSRHash: sha256Base64(certReq.Spec.Request),
 		},
 	}
 
@@ -155,4 +158,11 @@ func (r *CertificateRequestReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		For(&certmanager.CertificateRequest{}).
 		Named("certificaterequest").
 		Complete(r)
+}
+
+// sha256Base64 computes the SHA-256 hash of data and returns it as base64-encoded string.
+// This is used for adversarial hardening (3.2) to provide idempotent enrollment.
+func sha256Base64(data []byte) string {
+	hash := sha256.Sum256(data)
+	return base64.StdEncoding.EncodeToString(hash[:])
 }
